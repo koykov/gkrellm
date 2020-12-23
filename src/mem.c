@@ -107,6 +107,14 @@ typedef struct
 
 	gulong				page_in,
 						page_out;
+
+	/* see MeminfoMeter fields */
+	guint64		total,
+				used,
+				free,
+				shared,
+				buffers,
+				cached;
 	}
 	MeminfoChart;
 
@@ -116,7 +124,8 @@ static GkrellmMonitor	*mon_mem,
 
 static MeminfoMeter	mem,
 					swap;
-static MeminfoChart	swap_chart;
+static MeminfoChart	mem_chart,
+                    swap_chart;
 
 static gint			x_scroll,
 					x_mon_motion,
@@ -158,6 +167,12 @@ gkrellm_mem_assign_data(guint64 total, guint64 used, guint64 free,
 	mem.shared = shared;
 	mem.buffers = buffers;
 	mem.cached = cached;
+	mem_chart.total = total;
+	mem_chart.used = used;
+	mem_chart.free = free;
+	mem_chart.shared = shared;
+	mem_chart.buffers = buffers;
+	mem_chart.cached = cached;
 	}
 
 void
@@ -455,7 +470,7 @@ update_meminfo(void)
 	gulong			u, b, c, used;
 	gint			w_scroll, w, full_scale;
 
-	if (! (mem.enabled || swap.enabled || swap_chart.enabled))
+	if (! (mem.enabled || swap.enabled || mem_chart.enabled || swap_chart.enabled))
 		return;
 	if (GK.five_second_tick || force_meminfo_update())
 		(*read_mem_data)();
@@ -463,11 +478,18 @@ update_meminfo(void)
 
 	if (GK.second_tick)
 		{
-		MeminfoChart	*mc	= &swap_chart;
+		MeminfoChart	*sc	= &swap_chart;
 
+		if ((cp = sc->chart) != NULL && GK.second_tick)
+			{
+			gkrellm_store_chartdata(cp, 0, sc->page_out, sc->page_in);
+			refresh_chart(sc);
+			}
+
+		MeminfoChart	*mc = &mem_chart;
 		if ((cp = mc->chart) != NULL && GK.second_tick)
 			{
-			gkrellm_store_chartdata(cp, 0, mc->page_out, mc->page_in);
+			gkrellm_store_chartdata(mc, 0, mc->total, mc->used, mc->free, mc->shared, mc->buffers, mc->cached);
 			refresh_chart(mc);
 			}
 		}
@@ -967,7 +989,10 @@ create_mem(GtkWidget *vbox, gint first_create)
 		(*read_swap_data)();
 		}
 	if (swap_chart.enabled)
-		create_chart(&swap_chart, first_create);
+	{
+        create_chart(&mem_chart, first_create);
+        create_chart(&swap_chart, first_create);
+    }
 	create_mem_panel(vbox, first_create);
 	create_swap_panel(vbox, first_create);
 	setup_scaling(NULL, &swap_chart);
@@ -1162,6 +1187,20 @@ cb_swap_chart_enable(GtkWidget *button, gpointer data)
 	}
 
 static void
+cb_mem_chart_enable(GtkWidget *button, gpointer data)
+{
+    gboolean enabled;
+
+    enabled = GTK_TOGGLE_BUTTON(button)->active;
+    if (enabled && !mem_chart.enabled)
+        create_chart(&mem_chart, TRUE);
+    else if (!enabled && mem_chart.enabled)
+        destroy_chart(&mem_chart);
+    setup_scaling(NULL, &mem_chart);
+    spacer_visibility();
+}
+
+static void
 cb_launch_entry(GtkWidget *widget, gpointer data)
 	{
 	if (GPOINTER_TO_INT(data) == 0)
@@ -1327,6 +1366,10 @@ create_meminfo_tab(GtkWidget *tab_vbox)
 	vbox1 = gkrellm_gtk_category_vbox(vbox,
 				_("Memory"),
 				4, 0, TRUE);
+    gkrellm_gtk_check_button_connected(vbox1, NULL,
+				mem_chart.enabled, FALSE, FALSE, 0,
+				cb_mem_chart_enable, NULL,
+				_("Enable memory chart"));
 	hbox = gtk_hbox_new(FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox1), hbox, FALSE, TRUE, 5);
     gkrellm_gtk_check_button_connected(hbox, NULL,

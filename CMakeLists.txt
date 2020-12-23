@@ -56,4 +56,4 @@ add_executable(gkrellm
 
 target_include_directories(gkrellm PUBLIC shared)
 
-target_link_libraries(gkrellm PRIVATE GTK2::gtk -lgmodule-2.0 -lX11 -lm -lssl -lcrypto)
+target_link_libraries(gkrellm PRIVATE GTK2::gtk -lgtk-x11-2.0 -lgdk-x11-2.0 -lpangocairo-1.0 -latk-1.0 -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lpangoft2-1.0 -lpango-1.0 -lgobject-2.0 -lharfbuzz -lfontconfig -lfreetype -Wl,--export-dynamic -lgmodule-2.0 -lglib-2.0 -lgthread-2.0 -pthread -lglib-2.0   -L/usr/X11R6/lib -lX11 -lSM -lICE  -lssl -lcrypto -lm -Wl,-E)

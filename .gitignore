@@ -7,3 +7,5 @@ configure.mk
 gkrellm.pc
 server/gkrellmd
 src/gkrellm
+cmake-build-debug
+.idea
